@@ -15,7 +15,7 @@ function toLDR(state, res) {
 
   const out = [
     '0 FILE chain.ldr',
-    '0 Made with the LEGO chain builder',
+    '0 Made with LEGO chain generator',
     '0 Name: chain.ldr',
     '0 // origin: centre of the first wheel, on its near face',
     '0 // Stud.io will flag false collisions between links and teeth. Ignore them.',
