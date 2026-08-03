@@ -1,4 +1,4 @@
-# LEGO chain generator
+# [LEGO chain generator](https://donmerendolo.github.io/LEGO-chain-generator/)
 
 Draw a loop around some gears and get the chain that fits as an `.ldr`.
 
