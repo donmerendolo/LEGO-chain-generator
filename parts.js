@@ -17,6 +17,8 @@ const WHEEL_THICKNESS = 1;
 const CHAINS = {
   '3711': {
     part: '3711.dat', pitch: 0.8,   // 16 LDU, from 3711.dat
+    // A module 1 gear: the chain rides its pitch circle, z/2 mm = z/16 studs.
+    radius: (w) => w.teeth / 16,
     wheels: [
       { part: '3647.dat', teeth: 8, colour: 72 },
       { part: '94925.dat', teeth: 16, colour: 71 },
@@ -26,13 +28,17 @@ const CHAINS = {
   },
 
   '57518': {
-    // ponytail: the tread pitch is unverified against the real part. The two
-    // sprockets take their size from the LDraw model, so only this number is a
-    // guess; drop the true one in when you have it.
-    part: '57518.dat', pitch: 2,
+    // 30 LDU. Not from the tread itself but from its two sprockets, which have
+    // 10 and 6 teeth and only agree on one pitch: at 1.5 studs the pin circle
+    // lands between valley and tip on both, Ø4.85 and Ø3.00. Two parts drawn
+    // years apart agreeing on a round number is not a coincidence.
+    part: '57518.dat', pitch: 1.5,
+    // A sprocket seats one link per tooth, so the pins sit on the circle that
+    // fits z chords of the pitch.
+    radius: (w, pitch) => pitch / (2 * Math.sin(Math.PI / w.teeth)),
     wheels: [
-      { part: '57519.dat', colour: 71 },
-      { part: '57520.dat', colour: 71 },
+      { part: '57519.dat', teeth: 10, colour: 71 },
+      { part: '57520.dat', teeth: 6, colour: 71 },
     ],
   },
 };
@@ -41,22 +47,43 @@ const CHAINS = {
 // that matters is how big they are, and the LDraw model already says. To add
 // one, put its part number here and in tools/outlines.js, then rerun that.
 const PLAIN_WHEELS = [
+  { part: '18654.dat', colour: 72 },
   { part: '4624.dat', colour: 71 },
+  { part: '42610.dat', colour: 71 },
+  { part: '13971.dat', colour: 71 },
   { part: '4185a.dat', colour: 71 },
   { part: '2994.dat', colour: 71 },
   { part: '56145.dat', colour: 71 },
   { part: '44772.dat', colour: 71 },
 ];
 
+// Which way a link lies from the joint it hangs on. The 3711 runs forward from
+// its origin, the tread plate backwards, and the outline's own box says so: the
+// side its bulk sits on. Getting this wrong turns the drawing — and the export —
+// round by one link, which only shows where the chain bends.
+const linkRunsBack = (chain) => {
+  const box = OUTLINES[chain.part].box;
+  return box[0] + box[2] < 0;
+};
+
+// A tread plate hangs to one side of its pins and that side has to be the
+// outside of the loop, or the plates pile into each other on every bend. Which
+// side is out depends on which way round you drew, so the default follows the
+// chain rather than the piece; the checkbox is left as an override.
+const linkFacesIn = (chain, path) => !!path && path.turn < 0;
+
 // How big the piece is drawn, straight from its outline.
 const drawnRadius = (wheel) => Math.max(...OUTLINES[wheel.part].box.map(Math.abs)) / LDU;
 
-// A geared wheel rides the chain on its pitch circle: z/2 mm = z/16 studs.
-// Anything else carries the chain on its rim.
-const pitchRadius = (wheel) => (wheel.teeth ? wheel.teeth / 16 : drawnRadius(wheel));
+// Toothed wheels ride the chain on a pitch circle their chain works out; a
+// plain rim carries it on the rim itself. Grooved wheels included: a chain is
+// always set up so it cannot wander sideways, so it sits on the rim.
+const pitchRadius = (wheel, chain) =>
+  (wheel.teeth ? chain.radius(wheel, chain.pitch) : drawnRadius(wheel));
 
-// The real obstacle is the root circle, not the pitch circle: z/2 - 1.2 mm. A
-// plain wheel gets the same 1.2 mm allowance, because the links are straight
-// and always cut a little inside the circle they ride on.
+// What the chain must not run into: the valley between the teeth, measured off
+// the part rather than guessed. On a plain rim there is no valley, so it falls
+// back to 1.2 mm of slack — the links are straight and always cut a little
+// inside any circle they ride on.
 const rootRadius = (wheel) =>
-  Math.max(0.1, (wheel.teeth ? wheel.teeth / 2 - 1.2 : wheel.R * 8 - 1.2) / 8);
+  Math.max(0.1, Math.min(OUTLINES[wheel.part].root / LDU, wheel.R - 0.15));

@@ -24,9 +24,10 @@ function toLDR(state, res) {
   for (const w of state.wheels)
     out.push(`1 ${w.colour} ${X(w.x)} ${Y(w.y)} ${num(z)} 1 0 0 0 1 0 0 0 1 ${w.part}`);
 
-  for (const p of linkPlacements(res.joints, chain.pitch, state.linkReverse)) {
+  for (const p of linkPlacements(res.joints, chain.pitch, linkRunsBack(chain), state.linkReverse)) {
     // Work out the direction after the Y flip: mirroring changes its sign.
-    const dx = p.ux, dy = -p.uy, f = state.linkFlip ? -1 : 1;
+    const dx = p.ux, dy = -p.uy;
+    const f = state.linkFlip !== linkFacesIn(chain, res.path) ? -1 : 1;
     // Columns are the images of the piece's own axes: X = hinge, Z = length.
     out.push(`1 0 ${X(p.x)} ${Y(p.y)} ${num(z)} ` +
              `0 ${num(f * dy)} ${num(dx)} 0 ${num(-f * dx)} ${num(dy)} ${f} 0 0 ${chain.part}`);

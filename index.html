@@ -17,6 +17,7 @@
   /* No native dragging or text selection: the pointer is ours, we are drawing with it. */
   #board { touch-action:none; background:#fff; width:100%; height:100%; display:block;
            user-select:none; -webkit-user-select:none; -webkit-user-drag:none; }
+  #board.panning, #board.panning * { cursor:grabbing; }
 
   #flags { display:flex; gap:6px; margin-bottom:14px; }
   #flags button { padding:2px; border:2px solid var(--line); border-radius:6px; background:#fff;

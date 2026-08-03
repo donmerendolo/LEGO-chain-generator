@@ -44,9 +44,15 @@ function recompute() {
   render();
 }
 
-// Closest approach of the chain to every wheel, even ones it never touches.
+// A wheel whose teeth were cut for this very chain takes one link per tooth, so
+// the links sit in the valleys by design: the chords *are* the polygon the teeth
+// were shaped around, and complaining that they touch it is nonsense.
+const seatsTheChain = (w) => w.teeth &&
+  Math.abs(2 * w.R * Math.sin(Math.PI / w.teeth) - pitch()) < 1e-6;
+
+// Closest approach of the chain to every other wheel, even ones it never touches.
 function clearances(joints) {
-  return state.wheels.map((w) => {
+  return state.wheels.filter((w) => !seatsTheChain(w)).map((w) => {
     let best = Infinity;
     for (let i = 0; i < joints.length; i++)
       best = Math.min(best, distToSegment(w, joints[i], joints[(i + 1) % joints.length]));
@@ -87,12 +93,14 @@ function render() {
   });
 
   // Turned round, the links overlap the other way too, so draw them in reverse.
-  const placed = res?.joints ? linkPlacements(res.joints, chain.pitch, state.linkReverse) : [];
+  const placed = res?.joints
+    ? linkPlacements(res.joints, chain.pitch, linkRunsBack(chain), state.linkReverse) : [];
   if (state.linkReverse) placed.reverse();
+  const facing = state.linkFlip !== linkFacesIn(chain, res?.path);
   const link = (p, clip) => {
     const deg = Math.atan2(p.uy, p.ux) * 180 / Math.PI;
     return `<g transform="translate(${p.x},${p.y}) rotate(${deg.toFixed(2)})
-              scale(${1 / LDU},${(state.linkFlip ? -1 : 1) / LDU})" fill="#fff" stroke="#2b3440"
+              scale(${1 / LDU},${(facing ? -1 : 1) / LDU})" fill="#fff" stroke="#2b3440"
               stroke-width="1.3" vector-effect="non-scaling-stroke"
               ><g ${clip}><use href="#${shapeId(chain.part)}"/></g></g>`;
   };
@@ -115,11 +123,16 @@ function render() {
               stroke="#e8b800" stroke-width="0.15" stroke-linecap="round" stroke-linejoin="round"/>`;
 
   const used = new Set([chain.part, ...state.wheels.map((w) => w.part)]);
-  const box = OUTLINES[chain.part].box;                 // half a link, from its joint
+  // Half a link, the half nearest the joint it hangs on — which end that is
+  // depends on which way the part runs from its origin.
+  const box = OUTLINES[chain.part].box;
+  const half = chain.pitch * LDU / 2;
+  const from = linkRunsBack(chain) ? -half : box[0] - 1;
+  const to = linkRunsBack(chain) ? box[2] + 1 : half;
   $('shapes').innerHTML = [...used].filter((p) => OUTLINES[p])
     .map((p) => `<path id="${shapeId(p)}" d="${OUTLINES[p].d}"/>`).join('')
-    + `<clipPath id="seam"><rect x="${box[0] - 1}" y="${box[1] - 1}"
-         width="${chain.pitch * LDU / 2 - box[0] + 1}" height="${box[3] - box[1] + 2}"/></clipPath>`;
+    + `<clipPath id="seam"><rect x="${from}" y="${box[1] - 1}"
+         width="${to - from}" height="${box[3] - box[1] + 2}"/></clipPath>`;
   flip.innerHTML = svg;
 
   board.setAttribute('viewBox', `${view.x} ${view.y} ${view.w} ${view.h}`);
@@ -168,7 +181,7 @@ function renderPanels() {
 
 function statsHTML() {
   const said = state.message ? `<b class="warn">${state.message}</b>\n` : '';
-  if (!state.route.length) return said + t('hintStart');
+  if (!state.route.length) return said + t('idealLinks', { n: '—' });
   const res = state.res;
   if (res.error) return `${said}<b class="warn">${res.error}</b>`;
   const lines = [];
@@ -210,7 +223,7 @@ function snapped(ev) {
 const overBoard = (ev) => board.contains(document.elementFromPoint(ev.clientX, ev.clientY));
 
 function addWheel(spec, pos) {
-  state.wheels.push({ ...spec, R: pitchRadius(spec), ...pos });
+  state.wheels.push({ ...spec, R: pitchRadius(spec, CHAINS[state.chain]), ...pos });
   state.selected = state.wheels.length - 1;
 }
 
@@ -234,6 +247,10 @@ $('wheelPick').addEventListener('pointerdown', (ev) => {
   globalThis.addEventListener('pointerup', drop);
 });
 
+// The right button shifts the board about, like sliding a sheet of paper.
+let panning = null;
+board.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
 // Press on a wheel to move it; press anywhere else and you are drawing a chain.
 // preventDefault stops the browser deciding halfway through that you meant to
 // drag the picture, which used to cut the stroke short.
@@ -242,15 +259,27 @@ board.addEventListener('dragstart', (ev) => ev.preventDefault());
 board.addEventListener('pointerdown', (ev) => {
   ev.preventDefault();
   try { board.setPointerCapture(ev.pointerId); } catch { /* synthetic events */ }
+  if (ev.button === 2) {
+    panning = { x: ev.clientX, y: ev.clientY };
+    board.classList.add('panning');
+    return;
+  }
   const el = ev.target.closest('[data-wi]');
   if (el) { dragging = state.selected = +el.dataset.wi; render(); }
   else { dragging = null; state.stroke = [atPointer(ev)]; }
 });
 board.addEventListener('pointermove', (ev) => {
-  if (state.stroke) { state.stroke.push(atPointer(ev)); render(); }     // never snapped
+  if (panning) {
+    const perPixel = view.w / board.clientWidth;
+    view.x -= (ev.clientX - panning.x) * perPixel;
+    view.y -= (ev.clientY - panning.y) * perPixel;
+    panning = { x: ev.clientX, y: ev.clientY };
+    render();
+  } else if (state.stroke) { state.stroke.push(atPointer(ev)); render(); }     // never snapped
   else if (dragging !== null) { Object.assign(state.wheels[dragging], snapped(ev)); boardChanged(); }
 });
 board.addEventListener('pointerup', () => {
+  if (panning) { panning = null; board.classList.remove('panning'); return; }
   if (state.stroke) {
     const span = extent(state.stroke);
     state.message = '';
@@ -271,7 +300,11 @@ board.addEventListener('pointerup', () => {
 });
 // If the browser takes the pointer off us, forget the stroke rather than laying
 // a chain along half of it.
-board.addEventListener('pointercancel', () => { state.stroke = null; dragging = null; render(); });
+board.addEventListener('pointercancel', () => {
+  state.stroke = null; dragging = null; panning = null;
+  board.classList.remove('panning');
+  render();
+});
 
 const discs = () => state.wheels.map((w) => ({ c: { x: w.x, y: w.y }, R: w.R }));
 const extent = (pts) => {

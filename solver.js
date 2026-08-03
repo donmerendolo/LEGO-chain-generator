@@ -89,17 +89,23 @@ function solveChain(makePath, links, pitch) {
   return { offset, path, joints: w.joints, gap: w.gap, ideal: makePath(0).total / pitch };
 }
 
-// Where each link sits: the fork end and the direction it points. The piece is
-// its nominal length, so it is centred on the real gap between two joints; both
+// Where each link sits: the pin its origin sits on, and the way it points. Both
 // the drawing and the .ldr export go through here.
-function linkPlacements(joints, nominal, reverse) {
+//
+// A piece hangs from the pin at its own origin, and its other pin is a pitch
+// away — forwards for a chain link, backwards for a tread plate. So a backwards
+// piece has to start from the far end of the gap, or it reaches back into the
+// one before and the whole chain comes out a link out of step. Turning it round
+// is a separate thing: that reverses which way it points as well.
+function linkPlacements(joints, nominal, runsBack, reverse) {
   return joints.map((a, i) => {
     const b = joints[(i + 1) % joints.length];
     const len = Math.hypot(b.x - a.x, b.y - a.y);
-    let ux = (b.x - a.x) / len, uy = (b.y - a.y) / len;
+    const ux = (b.x - a.x) / len, uy = (b.y - a.y) / len;
     const slack = (len - nominal) / 2;
-    let fork = { x: a.x + ux * slack, y: a.y + uy * slack };
-    if (reverse) { fork = { x: b.x - ux * slack, y: b.y - uy * slack }; ux = -ux; uy = -uy; }
-    return { ...fork, ux, uy };
+    const fromStart = runsBack === reverse;             // which end it hangs on
+    const at = fromStart ? a : b, sign = fromStart ? 1 : -1;
+    return { x: at.x + ux * slack * sign, y: at.y + uy * slack * sign,
+             ux: reverse ? -ux : ux, uy: reverse ? -uy : uy };
   });
 }

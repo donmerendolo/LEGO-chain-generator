@@ -29,7 +29,8 @@ const PARTS = {
   '3649.dat': [FLAT, GREY], '57519.dat': [FLAT, GREY], '57520.dat': [FLAT, GREY],
   '4185a.dat': [FLAT, GREY], '4624.dat': [FLAT, GREY], '2994.dat': [FLAT, GREY],
   '56145.dat': [FLAT, GREY], '44772.dat': [FLAT, GREY],
-  '3711.dat': [EDGE, BLACK], '57518.dat': [EDGE, BLACK],
+  '18654.dat': [FLAT, DARK], '42610.dat': [FLAT, GREY], '13971.dat': [FLAT, GREY],
+  '3711.dat': [EDGE, BLACK], '57518.dat': [EDGE, DARK],
 };
 
 await Deno.mkdir(CACHE, { recursive: true });
@@ -66,7 +67,7 @@ const compose = (m, c) => {
   const at = (r, k) => m[r * 3] * c[k] + m[r * 3 + 1] * c[3 + k] + m[r * 3 + 2] * c[6 + k];
   const t = apply(m, { x: c[9], y: c[10], z: c[11] });
   return [at(0, 0), at(0, 1), at(0, 2), at(1, 0), at(1, 1), at(1, 2),
-          at(2, 0), at(2, 1), at(2, 2), t.x, t.y, t.z];
+  at(2, 0), at(2, 1), at(2, 2), t.x, t.y, t.z];
 };
 
 // Every triangle of the part, in part coordinates. Quads become two triangles.
@@ -179,7 +180,7 @@ const TURN = Math.PI / 4;             // swing the camera round…
 const TIP = -Math.atan(Math.SQRT1_2); // …and tip it down: plain isometric
 
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2],
-                         a[0] * b[1] - a[1] * b[0]];
+a[0] * b[1] - a[1] * b[0]];
 const unit = (v) => { const n = Math.hypot(...v) || 1; return v.map((c) => c / n); };
 
 // Swing the camera round the part's up-axis, then tip it down towards the top.
@@ -204,7 +205,7 @@ function shade(solid, straightOn, colour) {
     at: t.map((v) => ({ x: dot(view.x, v), y: dot(view.y, v) })),
     z: t.map((v) => dot(view.out, v)),
     n: unit(cross([t[1].x - t[0].x, t[1].y - t[0].y, t[1].z - t[0].z],
-                  [t[2].x - t[0].x, t[2].y - t[0].y, t[2].z - t[0].z])),
+      [t[2].x - t[0].x, t[2].y - t[0].y, t[2].z - t[0].z])),
   }));
 
   const box = [Infinity, Infinity, -Infinity, -Infinity];
@@ -225,12 +226,12 @@ function shade(solid, straightOn, colour) {
     const tone = 0.42 + 0.58 * lit;
     const p = tri.at.map(at);
     const area = (p[1][0] - p[0][0]) * (p[2][1] - p[0][1])
-               - (p[2][0] - p[0][0]) * (p[1][1] - p[0][1]);
+      - (p[2][0] - p[0][0]) * (p[1][1] - p[0][1]);
     if (Math.abs(area) < 1e-9) continue;
     const lo = [Math.max(0, Math.floor(Math.min(p[0][0], p[1][0], p[2][0]))),
-                Math.max(0, Math.floor(Math.min(p[0][1], p[1][1], p[2][1])))];
+    Math.max(0, Math.floor(Math.min(p[0][1], p[1][1], p[2][1])))];
     const hi = [Math.min(size - 1, Math.ceil(Math.max(p[0][0], p[1][0], p[2][0]))),
-                Math.min(size - 1, Math.ceil(Math.max(p[0][1], p[1][1], p[2][1])))];
+    Math.min(size - 1, Math.ceil(Math.max(p[0][1], p[1][1], p[2][1])))];
     for (let y = lo[1]; y <= hi[1]; y++) for (let x = lo[0]; x <= hi[0]; x++) {
       const px = x + 0.5, py = y + 0.5;
       const w0 = ((p[1][0] - px) * (p[2][1] - py) - (p[2][0] - px) * (p[1][1] - py)) / area;
@@ -296,7 +297,7 @@ async function png(size, rgba) {
   new DataView(head.buffer).setUint32(4, size);
   head.set([8, 6, 0, 0, 0], 8);                    // 8 bits, RGBA, no interlace
   const parts = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
-                 chunk('IHDR', head), chunk('IDAT', body), chunk('IEND', new Uint8Array())];
+  chunk('IHDR', head), chunk('IDAT', body), chunk('IEND', new Uint8Array())];
   const file = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let at = 0;
   for (const p of parts) { file.set(p, at); at += p.length; }
@@ -323,15 +324,25 @@ for (const [name, [view, colour]] of Object.entries(PARTS)) {
   const loops = trace(raster(tris, origin, cell, nx, ny), nx, ny);
   const path = loops.map((loop) => simplify(loop, SMOOTH)
     .map(([x, y], i) => `${i ? 'L' : 'M'}${+(origin[0] + x * cell).toFixed(1)} ` +
-                        `${+(origin[1] + y * cell).toFixed(1)}`).join('') + 'Z').join('');
+      `${+(origin[1] + y * cell).toFixed(1)}`).join('') + 'Z').join('');
 
   const shot = await png(SHOT, shade(solid, view, colour));
   await Deno.writeFile(new URL('../img/' + name.replace('.dat', '.png'), import.meta.url), shot);
 
-  result[name] = { box: box.map((v) => +v.toFixed(1)), d: path };
-  console.log(`${name}: ${loops.length} loops, ${(path.length / 1024).toFixed(1)} kB outline, ` +
-              `${(shot.length / 1024).toFixed(1)} kB picture, ` +
-              `${(box[2] - box[0]).toFixed(1)} x ${(box[3] - box[1]).toFixed(1)} LDU`);
+  // The narrowest the outer silhouette gets: the valley between a wheel's teeth,
+  // and just the rim on a plain one. That is what a chain must not cut into, and
+  // measuring beats the module-1 formula, which means nothing on a sprocket.
+  const outer = loops.reduce((a, b) => (Math.max(...b.map(([x, y]) =>
+    Math.hypot(origin[0] + x * cell, origin[1] + y * cell))) > Math.max(...a.map(([x, y]) =>
+      Math.hypot(origin[0] + x * cell, origin[1] + y * cell))) ? b : a), loops[0] ?? []);
+  const root = Math.min(...outer.map(([x, y]) =>
+    Math.hypot(origin[0] + x * cell, origin[1] + y * cell)));
+
+  result[name] = { box: box.map((v) => +v.toFixed(1)), root: +root.toFixed(1), d: path };
+  console.log(`${name}: valley Ø${(root * 2 / 20).toFixed(2)} studs, ` +
+    `${(path.length / 1024).toFixed(1)} kB outline, ` +
+    `${(shot.length / 1024).toFixed(1)} kB picture, ` +
+    `${(box[2] - box[0]).toFixed(1)} x ${(box[3] - box[1]).toFixed(1)} LDU`);
 }
 
 await Deno.writeTextFile(new URL('../outlines.js', import.meta.url),

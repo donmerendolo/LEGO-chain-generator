@@ -137,12 +137,14 @@ res.joints.forEach((v, i) => {
 });
 console.log(`ok  ${res.joints.length} links of exactly 0.8 studs`);
 
-// Every link's pin must land in the next link's fork, both ways round.
-for (const reverse of [false, true]) {
-  const place = linkPlacements(res.joints, 0.8, reverse);
+// Every link's far pin must land on another link's origin — whichever way the
+// piece runs from its origin, and whichever way round you turn it.
+for (const runsBack of [false, true]) for (const reverse of [false, true]) {
+  const place = linkPlacements(res.joints, 0.8, runsBack, reverse);
+  const away = runsBack ? -0.8 : 0.8;
   const worst = Math.max(...place.map((p) => Math.min(...place.map((q) =>
-    Math.hypot(p.x + p.ux * 0.8 - q.x, p.y + p.uy * 0.8 - q.y)))));
-  ok(`links join up (reverse=${reverse})`, worst, 0, 1e-9);
+    Math.hypot(p.x + p.ux * away - q.x, p.y + p.uy * away - q.y)))));
+  ok(`pins land on pins (runsBack=${runsBack}, reverse=${reverse})`, worst, 0, 1e-9);
 }
 
 // Six wheels, and a stroke that necks in past one of them. The wheel it necks
