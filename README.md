@@ -18,6 +18,8 @@ Draw a loop around some gears and get the chain that fits as an `.ldr`.
 
 You can use it in https://donmerendolo.github.io/LEGO-chain-generator/ or locally, cloning the repo and opening `index.html`.
 
+## Tests and rebuild pictures
+
 ```bash
 # check the math
 deno run --allow-read test.js
@@ -27,7 +29,7 @@ deno run --allow-net --allow-read --allow-write tools/outlines.js
 
 ---
 
-## Licence
+## License
 
 The code is [GPL-3.0](LICENSE.md).
 
