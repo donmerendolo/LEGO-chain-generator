@@ -8,6 +8,12 @@ Draw a loop around some gears and get the chain that fits as an `.ldr`.
   </p>
 </div>
 
+<div align="center">
+  <p float="left">
+    <img src="studio.png" width="90%">
+  </p>
+</div>
+
 ## Usage
 
 You can use it in https://donmerendolo.github.io/LEGO-chain-generator/ or locally, cloning the repo and opening `index.html`.
