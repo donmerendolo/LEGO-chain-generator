@@ -1,9 +1,8 @@
 // Part catalogue. The unit everywhere is the stud (8 mm = 20 LDU).
 //
-// `img` is the BrickLink catalogue photo, used in the palette so a part is easy
-// to recognise. On the board the piece is drawn from its real LDraw outline,
-// looked up in outlines.js by its `part` name — which is also where its size
-// comes from, so nothing here has to state a diameter.
+// Every piece is drawn from its real LDraw outline, on the board and in the
+// palette alike, looked up in outlines.js by its `part` name — which is also
+// where its size comes from, so nothing here has to state a diameter.
 //
 // `colour` is the LDraw colour code: 71 light bluish grey, 72 dark bluish grey,
 // 0 black.
@@ -17,12 +16,12 @@ const WHEEL_THICKNESS = 1;
 
 const CHAINS = {
   '3711': {
-    img: 'img/3711.png', part: '3711.dat', pitch: 0.8,   // 16 LDU, from 3711.dat
+    part: '3711.dat', pitch: 0.8,   // 16 LDU, from 3711.dat
     wheels: [
-      { part: '3647.dat', img: 'img/3647.png', teeth: 8, colour: 72 },
-      { part: '94925.dat', img: 'img/94925.png', teeth: 16, colour: 71 },
-      { part: '3648b.dat', img: 'img/3648.png', teeth: 24, colour: 72 },
-      { part: '3649.dat', img: 'img/3649.png', teeth: 40, colour: 71 },
+      { part: '3647.dat', teeth: 8, colour: 72 },
+      { part: '94925.dat', teeth: 16, colour: 71 },
+      { part: '3648b.dat', teeth: 24, colour: 72 },
+      { part: '3649.dat', teeth: 40, colour: 71 },
     ],
   },
 
@@ -30,10 +29,10 @@ const CHAINS = {
     // ponytail: the tread pitch is unverified against the real part. The two
     // sprockets take their size from the LDraw model, so only this number is a
     // guess; drop the true one in when you have it.
-    img: 'img/57518.png', part: '57518.dat', pitch: 2,
+    part: '57518.dat', pitch: 2,
     wheels: [
-      { part: '57519.dat', img: 'img/57519.png', colour: 71 },
-      { part: '57520.dat', img: 'img/57520.png', colour: 0 },
+      { part: '57519.dat', colour: 71 },
+      { part: '57520.dat', colour: 71 },
     ],
   },
 };
@@ -42,11 +41,11 @@ const CHAINS = {
 // that matters is how big they are, and the LDraw model already says. To add
 // one, put its part number here and in tools/outlines.js, then rerun that.
 const PLAIN_WHEELS = [
-  { part: '4624.dat', img: 'img/4624.png', colour: 71 },
-  { part: '4185a.dat', img: 'img/4185.png', colour: 71 },
-  { part: '2994.dat', img: 'img/2994.png', colour: 0 },
-  { part: '56145.dat', img: 'img/56145.png', colour: 0 },
-  { part: '44772.dat', img: 'img/44772.png', colour: 0 },
+  { part: '4624.dat', colour: 71 },
+  { part: '4185a.dat', colour: 71 },
+  { part: '2994.dat', colour: 71 },
+  { part: '56145.dat', colour: 71 },
+  { part: '44772.dat', colour: 71 },
 ];
 
 // How big the piece is drawn, straight from its outline.

@@ -19,6 +19,9 @@ const pitch = () => CHAINS[state.chain].pitch;
 const gridStep = () => (state.grid === 'free' ? null
   : { x: 1, y: state.grid === 'brick' ? BRICK : 1 });
 const shapeId = (part) => 'o-' + part.replace(/\W/g, '-');
+
+// The palette picture: the part rendered from its LDraw model by tools/outlines.js.
+const icon = (part) => `<img src="img/${part.replace('.dat', '.png')}" alt="">`;
 const palette = () => [...CHAINS[state.chain].wheels, ...PLAIN_WHEELS];
 
 // Moving, adding or removing a wheel makes the old route meaningless: where the
@@ -101,8 +104,10 @@ function render() {
 
   state.route.forEach((r, k) => {
     const w = state.wheels[r.wheel];
-    svg += `<text x="${w.x}" y="${-w.y}" transform="scale(1,-1)" text-anchor="middle" dy="0.15"
-              font-size="0.5" font-weight="bold" fill="#2e7de9">${k + 1}${r.s > 0 ? '↺' : '↻'}</text>`;
+    // Outlined, or it vanishes into the drawing.
+    svg += `<text x="${w.x}" y="${-w.y}" transform="scale(1,-1)" text-anchor="middle" dy="0.3"
+              font-size="0.85" font-weight="bold" fill="#2e7de9" stroke="#0a1a2b"
+              stroke-width="0.16" paint-order="stroke">${k + 1}</text>`;
   });
 
   if (state.stroke)
@@ -128,10 +133,10 @@ function render() {
 function renderPanels() {
   $('chainPick').innerHTML = Object.entries(CHAINS).map(([key, c]) =>
     `<button data-chain="${key}" class="${key === state.chain ? 'on' : ''}">
-       <img src="${c.img}" alt=""></button>`).join('');
+       ${icon(c.part)}</button>`).join('');
 
   const meshed = CHAINS[state.chain].wheels;
-  const button = (w, i) => `<button data-wheel="${i}"><img src="${w.img}" alt="">` +
+  const button = (w, i) => `<button data-wheel="${i}">${icon(w.part)}` +
     `${w.teeth ? w.teeth + 't' : 'Ø' + (2 * drawnRadius(w)).toFixed(1)}</button>`;
   $('wheelPick').innerHTML =
     `<h2>${t('gears')}</h2>
@@ -177,9 +182,11 @@ function statsHTML() {
     lines.push(`<b class="warn">${t('notClosed',
       { n: Math.abs(res.gap).toFixed(3), sign: t(res.gap > 0 ? 'tooMany' : 'tooFew') })}</b>`);
   lines.push(t('idealLinks', { n: res.ideal.toFixed(2) }));
-  lines.push(t('curveLength', { n: res.path.total.toFixed(3) }));
-  lines.push(t('thickness', { n: res.offset.toFixed(4), mm: (res.offset * 8).toFixed(2) }));
-  if (res.offset > 0.15 * pitch() / Math.PI) lines.push(`<b class="warn">${t('slack')}</b>`);
+  // Tightness in links, which is the unit anyone can act on. The thickness the
+  // solver works in is a real number but it means nothing to a builder.
+  const best = Math.max(3, Math.round(res.ideal));
+  if (state.links !== best)
+    lines.push(`<b class="warn">${t(state.links > best ? 'tooLoose' : 'tooTight', { n: best })}</b>`);
   for (const c of clearances(res.joints))
     if (c.gap < c.root)
       lines.push(`<b class="warn">${c.wheel.teeth ? t('hits', { n: c.wheel.teeth }) : t('hitsSmooth')}</b>`);
@@ -213,7 +220,7 @@ $('wheelPick').addEventListener('pointerdown', (ev) => {
   if (!btn) return;
   const spec = palette()[+btn.dataset.wheel];
   const ghost = $('ghost');
-  ghost.src = spec.img;
+  ghost.src = `img/${spec.part.replace('.dat', '.png')}`;
   ghost.style.display = 'block';
   const move = (e) => { ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px'; };
   const drop = (e) => {

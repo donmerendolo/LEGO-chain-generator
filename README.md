@@ -4,10 +4,9 @@ Double-click `index.html`. Nothing to install, works offline. English and Spanis
 with the flags in the corner.
 
 It is plain static files with relative paths and no build step, so putting the folder on
-GitHub Pages (or any static host) works as it stands — mind the picture credits at the
-bottom before you make it public.
+GitHub Pages (or any static host) works as it stands.
 
-1. Pick the chain type from its photo.
+1. Pick the chain type from its picture.
 2. Drag wheels onto the board. **Gears** are the ones made to mesh with the chain you picked;
    **wheels** are plain rims the chain just rides on. They snap to the grid (studs, bricks,
    or free).
@@ -59,12 +58,12 @@ rests at z ≥ 0. The `.ldr` also carries a `0 FILE` header, which makes it vali
 
 ## Where the pictures come from
 
-On the board every piece is drawn from its **real LDraw part**: `tools/outlines.js` walks the
-part's subfile tree, flattens the surfaces, projects them the way the piece sits and traces
-the outline — the silhouette plus any hole that goes clean through. That also settles how big
-each part is, so nothing in the catalogue has to state a diameter. Adding a wheel means
+Every piece comes from its **real LDraw part**. `tools/outlines.js` walks the part's subfile
+tree and flattens the surfaces, then does two things with them: traces the outline the board
+draws with — the silhouette plus any hole that goes clean through — and renders the picture
+the palette shows, shaded down the same axis, in the part's own colour. That also settles how
+big each part is, so nothing in the catalogue has to state a diameter. Adding a wheel means
 putting its part number in `parts.js` and `tools/outlines.js` and rerunning the generator.
-The LDraw parts library is CC BY 4.0 — https://www.ldraw.org.
 
-The palette photos in `img/` are BrickLink catalogue images, bundled so the tool needs no
-network. They belong to their respective owners; swap them if you plan to share this.
+The LDraw parts library is CC BY 4.0 — https://www.ldraw.org. That is the only thing here
+that is not ours, so the whole folder can go public as it stands.
