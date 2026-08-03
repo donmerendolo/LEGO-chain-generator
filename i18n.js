@@ -24,9 +24,11 @@ const STRINGS = {
     hits: 'The chain runs into the {n}-tooth wheel.',
     hitsSmooth: 'The chain runs into the smooth wheel.',
     needLinks: 'These wheels need {n} links, not {have}.',
+    noOffset: 'The link count fits, but no chain sits on these wheels: some are too ' +
+              'close together, or too small for this chain.',
     overlap: 'The wheels overlap.',
     notOneTurn: 'That loop does not add up ({n} turns). Draw it again.',
-    strayLoop: 'No chain can run like that: it would go round nothing, or cross over itself.',
+    strayLoop: 'That loop goes round nothing. Try again.',
     saveFirst: 'Make the chain close first.',
   },
 
@@ -52,9 +54,11 @@ const STRINGS = {
     hits: 'La cadena choca con la rueda de {n} dientes.',
     hitsSmooth: 'La cadena choca con la rueda lisa.',
     needLinks: 'Estas ruedas necesitan {n} eslabones, no {have}.',
+    noOffset: 'El número de eslabones cuadra, pero no hay cadena que se apoye en estas ' +
+              'ruedas: alguna está demasiado cerca de otra, o es muy pequeña para esta cadena.',
     overlap: 'Las ruedas se solapan.',
     notOneTurn: 'Ese lazo no cuadra ({n} vueltas). Dibújalo otra vez.',
-    strayLoop: 'Así no puede ir una cadena: o no rodea nada, o se cruza consigo misma.',
+    strayLoop: 'Ese lazo no rodea nada. Prueba otra vez.',
     saveFirst: 'Primero haz que la cadena cierre.',
   },
 };

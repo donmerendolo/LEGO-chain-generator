@@ -22,9 +22,9 @@ bottom before you make it public.
    a chain too — a circle closed on itself. A short click just deselects, so there is nothing
    to undo.
 
-   What it will not do is let the chain cross over itself: everything is in one plane, so two
-   strands cannot share a spot. That rules out crossed belts and figures of eight, and it is
-   why a loop that would need the chain to double back gets turned down.
+   Draw a crossing and you get a crossing. A real chain in one plane cannot do it — the two
+   strands would want the same spot — but nobody crosses a loop by accident, so it is built
+   as drawn rather than argued with.
 4. Set the number of links. Everything else follows: the thickness *t*, which is how far the
    pin line ends up off the pitch circle, is reported as the sanity check — if it comes out
    large, the chain is slack.

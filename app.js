@@ -217,14 +217,14 @@ $('wheelPick').addEventListener('pointerdown', (ev) => {
   ghost.style.display = 'block';
   const move = (e) => { ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px'; };
   const drop = (e) => {
-    window.removeEventListener('pointermove', move);
-    window.removeEventListener('pointerup', drop);
+    globalThis.removeEventListener('pointermove', move);
+    globalThis.removeEventListener('pointerup', drop);
     ghost.style.display = 'none';
     if (overBoard(e)) { addWheel(spec, snapped(e)); boardChanged(); }
   };
   move(ev);
-  window.addEventListener('pointermove', move);
-  window.addEventListener('pointerup', drop);
+  globalThis.addEventListener('pointermove', move);
+  globalThis.addEventListener('pointerup', drop);
 });
 
 // Press on a wheel to move it; press anywhere else and you are drawing a chain.
@@ -285,7 +285,7 @@ board.addEventListener('wheel', (ev) => {
   render();
 }, { passive: false });
 
-window.addEventListener('keydown', (ev) => {
+globalThis.addEventListener('keydown', (ev) => {
   if (ev.key !== 'Delete' || state.selected === null) return;
   if (/input|select|textarea/i.test(ev.target.tagName)) return;
   removeWheel();

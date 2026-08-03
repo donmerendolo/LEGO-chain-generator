@@ -64,10 +64,12 @@ const topology = (name, pts) => {
 };
 same('plain loop  ', topology('plain', shape(80, (a) => ({ x: 5 * Math.cos(a), y: 2.2 * Math.sin(a) }))),
   '0+ 1+ | 1.00 turns | 18.28 studs');
-// A crossed belt is out: the two strands would want the same spot, and there is
-// only one plane. Drawing a figure of eight gets you nothing, on purpose.
-same('figure eight refused', String(routeFromStroke(shape(120, (a) =>
-  ({ x: 5 * Math.sin(a), y: 4.4 * Math.sin(a) * Math.cos(a) })), pair)), 'null');
+// A crossed belt is not a thing a flat chain can do, but it is a thing people
+// draw, so it is built as drawn rather than turned down. Nobody crosses a loop
+// by accident.
+same('figure eight', topology('eight', shape(120, (a) =>
+  ({ x: 5 * Math.sin(a), y: 4.4 * Math.sin(a) * Math.cos(a) }))),
+  '0+ 1- | 0.00 turns | 18.96 studs');
 
 // One wheel is a chain too: a circle closed on itself.
 same('round a single wheel', asText(routeFromStroke(
@@ -92,6 +94,10 @@ const notch = [[-6, 2], [0, 0], [7, 1], [0, -4]].map(([x, y]) => ({ c: { x, y },
 const dip = [[-5.5, 4.2], [-8, 3], [-9, 0], [-8, -4], [-4, -6.5], [2, -7], [7, -6], [10, -3],
              [10.5, 1], [9, 3.5], [6, 4], [3, 2.5], [1.5, 0.4], [0, -1.7], [-1.5, 0.4], [-2, 3],
              [-2.2, 4.3]].map(([x, y]) => ({ x, y }));
+// Where that wheel goes in the route is the drawing's word, read off by pulling
+// the stroke taut. Only corners where the string really leans on a wheel count:
+// one merely fenced in by a shortcut is not a contact, and counting those put
+// wheels in the route twice, in places the pencil never went.
 const pushed = routeFromStroke(dip, notch);
 same('wheel pushing the chain in', asText(pushed), '0+ 3+ 2+ 1-');
 ok('pushed chain length', pathOf(pushed, notch).total, 38.30, 0.01);
@@ -154,3 +160,37 @@ const necking = [[-10.1, 11.1], [-7, 10.7], [-5.6, 8.4], [-5.2, 5.6], [-5, 3.5],
 const necked = routeFromStroke(necking, many);
 same('necked in past a wheel', asText(necked), '0- 1+ 2- 5- 3-');
 ok('necked chain length', pathOf(necked, many).total, 65.55, 0.01);
+
+// A wheel really can be touched twice. A big one flanked by two small ones on
+// the same line gets wrapped on both flanks, in two separate arcs, and nothing
+// crosses. Cutting the route at the first repeated wheel wrecked this.
+const flanked = [[0, 4, 0.5], [0, 0, 2.5], [0, -4, 0.5]]
+  .map(([x, y, R]) => ({ c: { x, y }, R }));
+const round3 = shape(80, (a) => ({ x: 3.6 * Math.cos(a), y: 5.5 * Math.sin(a) }));
+const twice = routeFromStroke(round3, flanked);
+same('big wheel touched twice', asText(twice), '0+ 1+ 2+ 1+');
+ok('flanked chain length', pathOf(twice, flanked).total, 21.19, 0.01);
+
+// Small wheels close together take the closing search through configurations
+// that have no path at all. Scanning the range finds the answer between them;
+// testing only the ends of a widening interval went blind and gave up.
+const tight = [[0, 2.2, 0.5], [0, -2.2, 0.5], [4, 0, 0.5]]
+  .map(([x, y, R]) => ({ c: { x, y }, R }));
+const nodes3 = (t) => tight.map((d) => ({ c: d.c, R: d.R + t, s: 1 }));
+const round4 = solveChain((t) => buildPath(nodes3(t)),
+  Math.round(buildPath(nodes3(0)).total / 0.8), 0.8);
+same('closes with wheels one stud apart', round4.error ?? 'closed', 'closed');
+ok('their offset', round4.offset, 0, 0.2);
+
+// A tail of the stroke that reaches up past a wheel and comes back: the string
+// catches on that wheel near the end of a lap and only lets go early in the
+// next one. With nothing after it, the wheel stayed in the chain and made it
+// cross itself, out of a stroke that never crossed.
+const tail = [[0, 0, 2.5], [-1.1, 4.9, 1], [4.9, 10.8, 2.5]]
+  .map(([x, y, R]) => ({ c: { x, y }, R }));
+const teardrop = [[3.2, 15.5], [0.5, 14.5], [-2, 12], [-4, 9.5], [-5.2, 6], [-5.4, 2], [-4.5, -1.5],
+  [-2.5, -3.5], [0.5, -4.2], [3, -3.3], [4.3, -0.6], [4.5, 1.7], [4.4, 4], [4.3, 6.9], [3.6, 9.4],
+  [3.1, 10.8], [2.7, 12.1], [2.9, 14]].map(([x, y]) => ({ x, y }));
+const dropped = routeFromStroke(teardrop, tail);
+same('a tail that touches nothing', asText(dropped), '0+ 1+');
+ok('tail chain length', pathOf(dropped, tail).total, 21.49, 0.01);

@@ -42,15 +42,28 @@ function bisect(f, a, b, iters = 60) {
   return (a + b) / 2;
 }
 
-// Hunt for a value in [a0, b0], widening the interval, that closes the chain.
-function solveClosure(gapAt, a0, b0) {
-  let a = a0, b = b0;
-  for (let i = 0; i < 14; i++) {
-    const ga = gapAt(a), gb = gapAt(b);
-    if (isFinite(ga) && isFinite(gb) && (ga < 0) !== (gb < 0)) return bisect(gapAt, a, b);
-    a -= (b0 - a0) / 2; b += (b0 - a0) / 2;
+// Hunt for the value that closes the chain by scanning the range for a change
+// of sign, skipping any sample where there is no path at all — small wheels
+// close together stop having one well before the range runs out. Testing only
+// the two ends of a widening interval, as this used to, went blind the moment
+// either end landed on one of those, and there could be a perfectly good answer
+// sitting between them.
+function solveClosure(gapAt, limit) {
+  const near = limit / 4;                        // where the answer nearly always is
+  if ((gapAt(-near) < 0) !== (gapAt(near) < 0)) return bisect(gapAt, -near, near);
+
+  const steps = 60, at = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = -limit + 2 * limit * i / steps;
+    at.push({ t, gap: gapAt(t) });
   }
-  return null;
+  // Closest to nothing first: the chain rides near the pitch circles, so a
+  // change of sign far out is a degenerate shape rather than the answer.
+  const brackets = at.slice(0, -1).map((a, i) => [a, at[i + 1]])
+    .filter(([a, b]) => isFinite(a.gap) && isFinite(b.gap) && (a.gap < 0) !== (b.gap < 0))
+    .sort((p, q) => Math.min(Math.abs(p[0].t), Math.abs(p[1].t))
+                  - Math.min(Math.abs(q[0].t), Math.abs(q[1].t)));
+  return brackets.length ? bisect(gapAt, brackets[0][0].t, brackets[0][1].t) : null;
 }
 
 // The chain has one free quantity: how far off the pitch circle the pin line
@@ -58,11 +71,15 @@ function solveClosure(gapAt, a0, b0) {
 function solveChain(makePath, links, pitch) {
   const offset = solveClosure(
     (x) => { const path = makePath(x); return path ? walk(path, links, pitch).gap : NaN; },
-    -0.25, 0.25);
+    pitch);
   if (offset === null) {
     const base = makePath(0);
-    return { error: base ? t('needLinks', { n: Math.round(base.total / pitch), have: links })
-                         : t('overlap') };
+    if (!base) return { error: t('overlap') };
+    const wanted = Math.round(base.total / pitch);
+    // Saying "it needs 48, not 48" helps nobody: if the count is already right,
+    // the trouble is that no thickness closes this chain at all.
+    return { error: wanted === links ? t('noOffset')
+                                     : t('needLinks', { n: wanted, have: links }) };
   }
   const path = makePath(offset);
   if (!path) return { error: t('overlap') };
