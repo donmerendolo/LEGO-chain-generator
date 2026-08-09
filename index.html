@@ -2,15 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LEGO chain generator</title>
 <style>
   :root { --line:#cbd6e2; --ink:#1e2c3a; --sky:#2e7de9; }
   * { box-sizing: border-box; }
+  /* The page itself never scrolls; the panels scroll inside themselves. The single
+     row has to be minmax(0, 1fr) and not the implicit auto, or it is sized by its
+     contents and a tall panel stretches it straight past the bottom of the window. */
   body { margin:0; font:16px/1.4 system-ui, sans-serif; color:var(--ink); background:#eef2f7;
-         display:grid; grid-template-columns:190px 1fr 250px; height:100vh; }
-  aside { background:#fff; padding:12px; overflow:auto; }
+         display:grid; grid-template-columns:190px 1fr 250px; grid-template-rows:minmax(0, 1fr);
+         height:100vh; overflow:hidden; }
+
+  /* Each side panel is a column that scrolls in the middle and not at the ends.
+     The buttons that finish a job sit in the part that cannot scroll, so they are
+     always there — which is what sticky positioning only manages some of the time. */
+  aside { background:#fff; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
   aside:first-child { border-right:1px solid var(--line); }
   aside:last-child { border-left:1px solid var(--line); }
+  .scroll { flex:1; min-height:0; overflow:auto; padding:12px; }
+  .foot { flex:none; padding:12px; border-top:1px solid var(--line); }
+
   h2 { font-size:15px; margin:18px 0 8px; }
   h2:first-of-type { margin-top:0; }
   .hint { font-size:12px; color:#6d7d8f; margin:6px 0; }
@@ -27,6 +39,7 @@
   .pick { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
   .pick button { border:2px solid var(--line); border-radius:12px; background:#fff; cursor:pointer;
                  padding:4px; font-size:11px; color:#6d7d8f; }
+  .pick button:hover { border-color:var(--sky); }
   .pick button.on { border-color:var(--sky); background:#eaf2ff; color:var(--ink); }
   .pick img { width:100%; height:54px; object-fit:contain; display:block; pointer-events:none; }
 
@@ -38,6 +51,9 @@
   fieldset:disabled { opacity:0.4; }
   button.big { width:100%; padding:10px; margin:6px 0; font:inherit; border-radius:12px;
                border:2px solid var(--line); background:#fff; cursor:pointer; }
+  button.big:disabled { opacity:0.4; cursor:default; }
+  .foot .big:first-child { margin-top:0; }
+  .foot .big:last-child { margin-bottom:0; }
   #stats { font-size:12px; white-space:pre-wrap; background:#eef2f7; padding:8px; border-radius:8px; }
   .warn { color:#b3261e; }
   #ghost { position:fixed; width:64px; height:64px; object-fit:contain; pointer-events:none;
@@ -47,6 +63,7 @@
 <body>
 
 <aside>
+  <div class="scroll">
   <div id="flags">
     <button data-lang="en" title="English"><svg width="26" height="13" viewBox="0 0 60 30">
       <rect width="60" height="30" fill="#012169"/>
@@ -63,6 +80,7 @@
   <div class="pick" id="chainPick"></div>
   <p class="hint" data-i18n="dragHint"></p>
   <div id="wheelPick"></div>
+  </div>
 </aside>
 
 <main>
@@ -79,6 +97,7 @@
 </main>
 
 <aside>
+  <div class="scroll">
   <h2 data-i18n="chainType"></h2>
   <p class="hint" data-i18n="drawHint"></p>
   <div class="row"><span data-i18n="links"></span><input id="c-links" type="number" min="3" step="1"></div>
@@ -95,16 +114,26 @@
     <button class="big" id="i-del" data-i18n="remove"></button>
   </fieldset>
 
-  <h2 data-i18n="result"></h2>
-  <div id="stats"></div>
-  <button class="big" id="save" data-i18n="save"></button>
+  <h2 data-i18n="board"></h2>
   <div class="row"><span data-i18n="grid"></span>
     <select id="grid">
       <option value="stud" data-i18n="gridStud"></option>
       <option value="brick" data-i18n="gridBrick"></option>
       <option value="free" data-i18n="gridFree"></option>
     </select></div>
-  <button class="big" id="reset" data-i18n="reset"></button>
+  <div class="row">
+    <button class="big" id="undo" data-i18n="undo" title="Ctrl+Z"></button>
+    <button class="big" id="redo" data-i18n="redo" title="Ctrl+Shift+Z"></button>
+  </div>
+
+  <h2 data-i18n="result"></h2>
+  <div id="stats"></div>
+  </div>
+
+  <div class="foot">
+    <button class="big" id="save" data-i18n="save"></button>
+    <button class="big" id="reset" data-i18n="reset"></button>
+  </div>
 </aside>
 
 <img id="ghost" alt="">

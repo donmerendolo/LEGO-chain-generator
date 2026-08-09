@@ -158,6 +158,8 @@ function renderPanels() {
      <div class="pick">${PLAIN_WHEELS.map((w, i) => button(w, meshed.length + i)).join('')}</div>`;
   for (const b of $('flags').children) b.classList.toggle('on', b.dataset.lang === lang);
 
+  $('undo').disabled = !past.length;
+  $('redo').disabled = !future.length;
   $('c-links').value = state.links;
   $('grid').value = state.grid;
   $('l-rev').checked = state.linkReverse;
@@ -206,6 +208,48 @@ function statsHTML() {
   return lines.join('\n');
 }
 
+// ---------- what was ----------
+
+// A board is a handful of small objects, so a step of history is a copy of the
+// whole thing rather than a description of what changed — no action has to
+// remember how to undo itself, and none can get it wrong. That is cheap enough
+// to keep a great many of them.
+//
+// Only what a person sets. Not the view or the grid, because moving the board is
+// not a change to the model and having undo scroll the screen about is maddening.
+const HISTORY = 1000;
+let past = [], future = [];
+
+const snapshot = () => JSON.stringify({
+  chain: state.chain, wheels: state.wheels, route: state.route, links: state.links,
+  linkReverse: state.linkReverse, linkFlip: state.linkFlip,
+  selected: state.selected, refWheel: state.refWheel,
+});
+
+function restore(shot) {
+  Object.assign(state, JSON.parse(shot));
+  state.stroke = null;
+  state.message = '';
+}
+
+// Called before a change, never after. A step that would repeat the one before it
+// is dropped, which is what stops a click into a number field that changes
+// nothing from costing a press of undo.
+function remember() {
+  const now = snapshot();
+  if (past[past.length - 1] === now) return;
+  past.push(now);
+  if (past.length > HISTORY) past.shift();
+  future = [];
+}
+
+function step(from, to) {
+  if (!from.length) return;
+  to.push(snapshot());
+  restore(from.pop());
+  recompute();
+}
+
 // ---------- pointer ----------
 
 function atPointer(ev) {
@@ -240,7 +284,7 @@ $('wheelPick').addEventListener('pointerdown', (ev) => {
     globalThis.removeEventListener('pointermove', move);
     globalThis.removeEventListener('pointerup', drop);
     ghost.style.display = 'none';
-    if (overBoard(e)) { addWheel(spec, snapped(e)); boardChanged(); }
+    if (overBoard(e)) { remember(); addWheel(spec, snapped(e)); boardChanged(); }
   };
   move(ev);
   globalThis.addEventListener('pointermove', move);
@@ -265,7 +309,9 @@ board.addEventListener('pointerdown', (ev) => {
     return;
   }
   const el = ev.target.closest('[data-wi]');
-  if (el) { dragging = state.selected = +el.dataset.wi; render(); }
+  // Taking hold of a wheel is only a change once it has gone somewhere, so the
+  // step to undo waits for the first move — a click that only selects costs none.
+  if (el) { dragging = { i: state.selected = +el.dataset.wi, moved: false }; render(); }
   else { dragging = null; state.stroke = [atPointer(ev)]; }
 });
 board.addEventListener('pointermove', (ev) => {
@@ -276,7 +322,11 @@ board.addEventListener('pointermove', (ev) => {
     panning = { x: ev.clientX, y: ev.clientY };
     render();
   } else if (state.stroke) { state.stroke.push(atPointer(ev)); render(); }     // never snapped
-  else if (dragging !== null) { Object.assign(state.wheels[dragging], snapped(ev)); boardChanged(); }
+  else if (dragging) {
+    if (!dragging.moved) { dragging.moved = true; remember(); }
+    Object.assign(state.wheels[dragging.i], snapped(ev));
+    boardChanged();
+  }
 });
 board.addEventListener('pointerup', () => {
   if (panning) { panning = null; board.classList.remove('panning'); return; }
@@ -288,6 +338,7 @@ board.addEventListener('pointerup', () => {
       const route = routeFromStroke(state.stroke, discs());
       if (!route) state.message = t('strayLoop');
       else {
+        remember();
         state.route = route;
         const path = makePath(0);
         if (path) state.links = Math.max(3, Math.round(path.total / pitch()));
@@ -326,6 +377,14 @@ board.addEventListener('wheel', (ev) => {
 }, { passive: false });
 
 globalThis.addEventListener('keydown', (ev) => {
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z') {
+    ev.preventDefault();
+    return ev.shiftKey ? step(future, past) : step(past, future);
+  }
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'y') {
+    ev.preventDefault();
+    return step(future, past);
+  }
   if (ev.key !== 'Delete' || state.selected === null) return;
   if (/input|select|textarea/i.test(ev.target.tagName)) return;
   removeWheel();
@@ -335,7 +394,8 @@ globalThis.addEventListener('keydown', (ev) => {
 
 $('chainPick').addEventListener('click', (ev) => {
   const b = ev.target.closest('[data-chain]');
-  if (!b) return;
+  if (!b || b.dataset.chain === state.chain) return;
+  remember();
   state.chain = b.dataset.chain;
   state.wheels = []; state.route = []; state.selected = null;
   recompute();
@@ -350,6 +410,7 @@ $('flags').addEventListener('click', (ev) => {
 });
 
 function removeWheel() {
+  remember();
   state.wheels.splice(state.selected, 1);
   state.selected = state.refWheel = null;
   boardChanged();
@@ -362,12 +423,21 @@ onInput('i-x', (v) => { state.wheels[state.selected].x = v; }, boardChanged);
 onInput('i-y', (v) => { state.wheels[state.selected].y = v; }, boardChanged);
 onInput('i-dx', (v) => { state.wheels[state.selected].x = state.wheels[state.refWheel].x + v; }, boardChanged);
 onInput('i-dy', (v) => { state.wheels[state.selected].y = state.wheels[state.refWheel].y + v; }, boardChanged);
+// Remembered when the field is entered rather than on every keystroke, so typing
+// "27" is one step back and not two.
+for (const id of ['c-links', 'i-x', 'i-y', 'i-dx', 'i-dy']) $(id).addEventListener('focus', remember);
 $('i-ref').onchange = () => { state.refWheel = +$('i-ref').value; render(); };
 $('i-del').onclick = removeWheel;
 $('grid').onchange = () => { state.grid = $('grid').value; render(); };
-$('l-rev').onchange = () => { state.linkReverse = $('l-rev').checked; render(); };
-$('l-flip').onchange = () => { state.linkFlip = $('l-flip').checked; render(); };
-$('reset').onclick = () => { state.wheels = []; state.route = []; state.selected = null; recompute(); };
+$('l-rev').onchange = () => { remember(); state.linkReverse = $('l-rev').checked; render(); };
+$('l-flip').onchange = () => { remember(); state.linkFlip = $('l-flip').checked; render(); };
+$('undo').onclick = () => step(past, future);
+$('redo').onclick = () => step(future, past);
+$('reset').onclick = () => {
+  remember();
+  state.wheels = []; state.route = []; state.selected = state.refWheel = null;
+  recompute();
+};
 
 $('save').onclick = () => {
   if (!state.res || state.res.error) return alert(t('saveFirst'));

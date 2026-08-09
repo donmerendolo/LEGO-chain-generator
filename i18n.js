@@ -11,8 +11,8 @@ const STRINGS = {
     flip: 'Other way round', face: 'Other face',
     wheel: 'Selected wheel', relTo: 'From', remove: 'Remove',
     result: 'Result', save: '💾 Save .ldr',
-    grid: 'Grid', gridStud: 'Studs', gridBrick: 'Bricks', gridFree: 'Free',
-    reset: '🗑 Start over',
+    board: 'Board', grid: 'Grid', gridStud: 'Studs', gridBrick: 'Bricks', gridFree: 'Free',
+    reset: '🔄 Start over', undo: '↶ Undo', redo: '↷ Redo',
 
     idealLinks: 'Links needed: {n}',
     notClosed: "Doesn't close: {n} studs of chain {sign}.",
@@ -39,8 +39,8 @@ const STRINGS = {
     flip: 'Del revés', face: 'Otra cara',
     wheel: 'Rueda seleccionada', relTo: 'Desde', remove: 'Quitar',
     result: 'Resultado', save: '💾 Guardar .ldr',
-    grid: 'Rejilla', gridStud: 'Studs', gridBrick: 'Bricks', gridFree: 'Libre',
-    reset: '🗑 Empezar de cero',
+    board: 'Tablero', grid: 'Rejilla', gridStud: 'Studs', gridBrick: 'Bricks', gridFree: 'Libre',
+    reset: '🔄 Empezar de cero', undo: '↶ Deshacer', redo: '↷ Rehacer',
 
     idealLinks: 'Eslabones necesarios: {n}',
     notClosed: 'No cierra: {sign} {n} studs de cadena.',
