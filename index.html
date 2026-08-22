@@ -12,14 +12,16 @@
      contents and a tall panel stretches it straight past the bottom of the window. */
   body { margin:0; font:16px/1.4 system-ui, sans-serif; color:var(--ink); background:#eef2f7;
          display:grid; grid-template-columns:190px 1fr 250px; grid-template-rows:minmax(0, 1fr);
-         height:100vh; overflow:hidden; }
+         height:100vh; height:100dvh; overflow:hidden; }
 
   /* Each side panel is a column that scrolls in the middle and not at the ends.
      The buttons that finish a job sit in the part that cannot scroll, so they are
      always there — which is what sticky positioning only manages some of the time. */
   aside { background:#fff; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
-  aside:first-child { border-right:1px solid var(--line); }
-  aside:last-child { border-left:1px solid var(--line); }
+  /* of-type, not of-child: the ghost image and the scripts come after the panels,
+     so the right-hand one is never the last child of anything. */
+  aside:first-of-type { border-right:1px solid var(--line); }
+  aside:last-of-type { border-left:1px solid var(--line); }
   .scroll { flex:1; min-height:0; overflow:auto; padding:12px; }
   .foot { flex:none; padding:12px; border-top:1px solid var(--line); }
 
@@ -57,6 +59,27 @@
   .foot .big:last-child { margin-bottom:0; }
   #stats { font-size:12px; white-space:pre-wrap; background:#eef2f7; padding:8px; border-radius:8px; }
   .warn { color:#b3261e; }
+  /* A phone. Three columns will not fit, so they become one: the board keeps the
+     top of the screen and stays put while the panels scroll underneath it, so
+     what you are building is never out of sight. Two fingers move and scale it,
+     and tapping a part drops it in the middle rather than making you drag. */
+  @media (max-width: 820px) {
+    body { display:flex; flex-direction:column; height:auto; min-height:100dvh; overflow:visible; }
+    /* The board comes second in the markup, between the two panels, because on a
+       wide screen that is where it goes. Here it belongs on top. */
+    main { order:-1; position:sticky; top:0; z-index:2; flex:none; height:55dvh;
+           background:#fff; border-bottom:1px solid var(--line); }
+    aside { display:block; overflow:visible; }
+    aside:first-of-type { border-right:0; }
+    aside:last-of-type { border-left:0; border-top:1px solid var(--line); }
+    .scroll { overflow:visible; }
+    .foot { border-top:0; }
+    .pick { grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); }
+    /* Fingers are not mouse pointers: everything you press wants to be bigger. */
+    button.big { padding:14px; }
+    input, select { padding:8px; }
+  }
+
   #ghost { position:fixed; width:64px; height:64px; object-fit:contain; pointer-events:none;
            transform:translate(-50%,-50%); z-index:9; display:none; }
 </style>

@@ -258,17 +258,37 @@ function atPointer(ev) {
   return p.matrixTransform(flip.getScreenCTM().inverse());
 }
 
-function snapped(ev) {
-  const p = atPointer(ev), step = gridStep();
+// The same point in the board's own coordinates, Y down: what the viewBox is
+// written in. Zooming works here, because that is what it moves.
+function atViewBox(clientX, clientY) {
+  const p = board.createSVGPoint();
+  p.x = clientX; p.y = clientY;
+  return p.matrixTransform(board.getScreenCTM().inverse());
+}
+
+function snapPoint(p) {
+  const step = gridStep();
   return step ? { x: Math.round(p.x / step.x) * step.x, y: Math.round(p.y / step.y) * step.y }
               : { x: p.x, y: p.y };
 }
+const snapped = (ev) => snapPoint(atPointer(ev));
 
 const overBoard = (ev) => board.contains(document.elementFromPoint(ev.clientX, ev.clientY));
 
 function addWheel(spec, pos) {
   state.wheels.push({ ...spec, R: pitchRadius(spec, CHAINS[state.chain]), ...pos });
   state.selected = state.wheels.length - 1;
+}
+
+// Tapped rather than dragged, a wheel lands in the middle of what you are
+// looking at — the only way to add one on a phone, where the palette is below
+// the board and dragging up to it is a nuisance. Spread out a little, because
+// two wheels exactly on top of each other are both impossible to tell apart and
+// impossible to grab.
+function addAtMiddle(spec) {
+  const r = board.getBoundingClientRect();
+  const c = atPointer({ clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 });
+  addWheel(spec, snapPoint({ x: c.x + (state.wheels.length % 4) * 3 - 4.5, y: c.y }));
 }
 
 // Dragging a new wheel out of the palette: a ghost follows the mouse the whole way.
@@ -284,7 +304,11 @@ $('wheelPick').addEventListener('pointerdown', (ev) => {
     globalThis.removeEventListener('pointermove', move);
     globalThis.removeEventListener('pointerup', drop);
     ghost.style.display = 'none';
-    if (overBoard(e)) { remember(); addWheel(spec, snapped(e)); boardChanged(); }
+    const dragged = Math.hypot(e.clientX - ev.clientX, e.clientY - ev.clientY) > 6;
+    if (dragged && !overBoard(e)) return;        // carried off somewhere else: dropped
+    remember();
+    if (dragged) addWheel(spec, snapped(e)); else addAtMiddle(spec);
+    boardChanged();
   };
   move(ev);
   globalThis.addEventListener('pointermove', move);
@@ -295,6 +319,37 @@ $('wheelPick').addEventListener('pointerdown', (ev) => {
 let panning = null;
 board.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
+// A phone has no right button and no wheel, so two fingers do both jobs at once,
+// the way every map does it. One finger is still drawing, so nothing starts until
+// the second one lands — and when it does, whatever the first was in the middle
+// of is abandoned rather than finished by accident.
+const fingers = new Map();
+let pinch = null;
+
+// Board units per screen pixel. The board fits what it shows inside itself and
+// letterboxes the rest, so the scale is set by whichever dimension runs out
+// first — the width on a desktop, the height on a phone held sideways.
+const perPixel = () =>
+  Math.max(view.w / board.clientWidth, view.h / board.clientHeight);
+
+const spread = () => {
+  const [a, b] = [...fingers.values()];
+  return { gap: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+           mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+};
+
+function pinchMove() {
+  const now = spread();
+  // Scale about the point between the fingers, which is the one that must not move…
+  zoomAbout(atViewBox(now.mid.x, now.mid.y), pinch.gap / now.gap);
+  // …and then follow that point wherever it has gone since the last frame.
+  const per = perPixel();
+  view.x -= (now.mid.x - pinch.mid.x) * per;
+  view.y -= (now.mid.y - pinch.mid.y) * per;
+  pinch = now;
+  render();
+}
+
 // Press on a wheel to move it; press anywhere else and you are drawing a chain.
 // preventDefault stops the browser deciding halfway through that you meant to
 // drag the picture, which used to cut the stroke short.
@@ -303,6 +358,14 @@ board.addEventListener('dragstart', (ev) => ev.preventDefault());
 board.addEventListener('pointerdown', (ev) => {
   ev.preventDefault();
   try { board.setPointerCapture(ev.pointerId); } catch { /* synthetic events */ }
+  fingers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  if (fingers.size === 2) {
+    state.stroke = null; dragging = null;            // that gesture was a pinch all along
+    pinch = spread();
+    render();
+    return;
+  }
+  if (fingers.size > 2) return;
   if (ev.button === 2) {
     panning = { x: ev.clientX, y: ev.clientY };
     board.classList.add('panning');
@@ -315,10 +378,12 @@ board.addEventListener('pointerdown', (ev) => {
   else { dragging = null; state.stroke = [atPointer(ev)]; }
 });
 board.addEventListener('pointermove', (ev) => {
+  if (fingers.has(ev.pointerId)) fingers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  if (pinch) { if (fingers.size >= 2) pinchMove(); return; }
   if (panning) {
-    const perPixel = view.w / board.clientWidth;
-    view.x -= (ev.clientX - panning.x) * perPixel;
-    view.y -= (ev.clientY - panning.y) * perPixel;
+    const per = perPixel();
+    view.x -= (ev.clientX - panning.x) * per;
+    view.y -= (ev.clientY - panning.y) * per;
     panning = { x: ev.clientX, y: ev.clientY };
     render();
   } else if (state.stroke) { state.stroke.push(atPointer(ev)); render(); }     // never snapped
@@ -328,7 +393,11 @@ board.addEventListener('pointermove', (ev) => {
     boardChanged();
   }
 });
-board.addEventListener('pointerup', () => {
+board.addEventListener('pointerup', (ev) => {
+  fingers.delete(ev.pointerId);
+  // Lifting one finger ends the pinch; the one still down is not the start of a
+  // new stroke, so it has nothing left to do either.
+  if (pinch) { if (fingers.size < 2) pinch = null; return; }
   if (panning) { panning = null; board.classList.remove('panning'); return; }
   if (state.stroke) {
     const span = extent(state.stroke);
@@ -351,7 +420,9 @@ board.addEventListener('pointerup', () => {
 });
 // If the browser takes the pointer off us, forget the stroke rather than laying
 // a chain along half of it.
-board.addEventListener('pointercancel', () => {
+board.addEventListener('pointercancel', (ev) => {
+  fingers.delete(ev.pointerId);
+  if (fingers.size < 2) pinch = null;
   state.stroke = null; dragging = null; panning = null;
   board.classList.remove('panning');
   render();
@@ -363,16 +434,19 @@ const extent = (pts) => {
   return Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
 };
 
-board.addEventListener('wheel', (ev) => {
-  ev.preventDefault();
-  const k = Math.min(4, Math.max(0.25, Math.exp(ev.deltaY * 0.0015)));
-  const p = board.createSVGPoint();
-  p.x = ev.clientX; p.y = ev.clientY;
-  const at = p.matrixTransform(board.getScreenCTM().inverse());     // fixed point of the zoom
+// Scale the board by k about a point that has to stay where it is on screen.
+// Both the wheel and a pinch end up here.
+function zoomAbout(at, k) {
   const w = Math.min(200, Math.max(6, view.w * k)), scale = w / view.w;
   view.x = at.x - (at.x - view.x) * scale;
   view.y = at.y - (at.y - view.y) * scale;
   view.w = w; view.h *= scale;
+}
+
+board.addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  zoomAbout(atViewBox(ev.clientX, ev.clientY),
+            Math.min(4, Math.max(0.25, Math.exp(ev.deltaY * 0.0015))));
   render();
 }, { passive: false });
 
