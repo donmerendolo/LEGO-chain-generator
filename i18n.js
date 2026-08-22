@@ -13,6 +13,7 @@ const STRINGS = {
     result: 'Result', save: '💾 Save .ldr',
     board: 'Board', grid: 'Grid', gridStud: 'Studs', gridBrick: 'Bricks', gridFree: 'Free',
     reset: '🔄 Start over', undo: '↶ Undo', redo: '↷ Redo',
+    source: 'Source', diagonal: 'Diagonal generator',
 
     idealLinks: 'Links needed: {n}',
     notClosed: "Doesn't close: {n} studs of chain {sign}.",
@@ -41,6 +42,7 @@ const STRINGS = {
     result: 'Resultado', save: '💾 Guardar .ldr',
     board: 'Tablero', grid: 'Rejilla', gridStud: 'Studs', gridBrick: 'Bricks', gridFree: 'Libre',
     reset: '🔄 Empezar de cero', undo: '↶ Deshacer', redo: '↷ Rehacer',
+    source: 'Código', diagonal: 'Generador de diagonales',
 
     idealLinks: 'Eslabones necesarios: {n}',
     notClosed: 'No cierra: {sign} {n} studs de cadena.',
