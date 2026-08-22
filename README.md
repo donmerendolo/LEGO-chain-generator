@@ -27,6 +27,10 @@ deno run --allow-read test.js
 deno run --allow-net --allow-read --allow-write tools/outlines.js
 ```
 
+## Check out [LEGO diagonal generator](https://donmerendolo.github.io/LEGO-diagonal-generator/) too
+
+My other tool for making diagonals, source code in: [donmerendolo/LEGO-diagonal-generator](https://github.com/donmerendolo/LEGO-diagonal-generator).
+
 ---
 
 ## License
